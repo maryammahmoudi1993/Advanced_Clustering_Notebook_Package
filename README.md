@@ -484,3 +484,33 @@ Same data, same state, three different decisions: the **linkage rule is a modell
 
 **Inversions.** On S8 both Centroid and Median show one: after a merge at height 0.461 (Centroid) the next merge happens *lower*, at 0.427. A real dendrogram cannot be cut cleanly there, which is why `has_inversion` exists.
 
+### B8. Dendrograms and comparisons on 40 customers (cell `[21]`)
+
+```python
+dist40 = pdist(XS40)            # 780 pairwise distances
+Zs40 = all_Z(XS40)
+```
+
+**Reading a linkage-matrix row `[i, j, h, s]`:** clusters `i` and `j` merge at height `h` into a cluster of `s` points. IDs 0-39 are the original customers; ID `40 + r` is the cluster created by row `r`.
+
+The table `M40` records, per method, whether an inversion exists and the **cophenetic correlation** (`np.corrcoef(cophenetic, dist40)`). The partitions at K = 4 are then compared:
+
+```python
+P = {m: partition_k(Z, nL, K) for m, Z in Zs40.items()}
+def map_to(ref, lab): ... linear_sum_assignment(-C) ...
+```
+
+Cluster numbers are arbitrary, so `map_to` builds a contingency table against the Ward reference and applies the **Hungarian algorithm** to renumber clusters for maximum overlap. Then `adjusted_rand_score` (ARI) and the **Jaccard** overlap of each cluster measure how much two methods agree.
+
+![Dendrograms: single, complete, average, centroid](figs/w1_dendrograms_a.png)
+
+*How to read a dendrogram: the x-axis lists the customers (by `source_row_id`), the y-axis is the merge height. Two leaves joined low are very similar. Single linkage produces a "staircase" (chaining), Complete produces balanced compact branches, and the Centroid panel is flagged **"inversion present"**: a branch that sits lower than the one it joins.*
+
+![Dendrograms: median, medoid, ward](figs/w1_dendrograms_b.png)
+
+![K = 4 partitions: single, complete, average, centroid](figs/w1_partitions_k4_a.png)
+
+![K = 4 partitions: median, medoid, ward](figs/w1_partitions_k4_b.png)
+
+*Same data, same K = 4, different groupings: the choice of linkage changes the clusters.*
+
