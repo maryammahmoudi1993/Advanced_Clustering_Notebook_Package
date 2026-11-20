@@ -139,3 +139,81 @@ Every clustering method must answer three questions:
 
 *Figure: blue circles are core points, orange triangles are border points, grey crosses are noise. The thin circles have radius ε = 1 km.*
 
+---
+
+## 5. Part A: setup and helpers
+
+Notebook cell `[2]`. This cell prepares everything the rest of the notebook needs.
+
+```python
+import json, itertools, time, platform, importlib.metadata as md
+from pathlib import Path
+import numpy as np, pandas as pd
+import matplotlib; matplotlib.use("Agg")
+import matplotlib.pyplot as plt
+```
+
+* **Line 1** - standard-library tools: `json` (save results), `itertools` (all pairs of clusters), `time` (timing algorithms), `platform` and `importlib.metadata` (print library versions for reproducibility).
+* **Line 2** - `Path` gives portable file paths (works on Windows and Linux).
+* **Line 3** - `numpy` for arrays, `pandas` for tables.
+* **Line 4** - `matplotlib.use("Agg")` selects a backend that draws straight to files, so plots are saved to `figs/` instead of popping up.
+
+```python
+from scipy.cluster.hierarchy import linkage, fcluster, dendrogram, cophenet
+from scipy.spatial.distance import pdist, squareform
+from scipy.optimize import linear_sum_assignment
+from scipy.stats import skew
+from sklearn.cluster import KMeans, DBSCAN, OPTICS, HDBSCAN, Birch
+from sklearn.neighbors import NearestNeighbors
+from sklearn.metrics import adjusted_rand_score, silhouette_score
+from pyproj import Transformer
+```
+
+| Import | What it does |
+|---|---|
+| `linkage` | builds the hierarchical tree (a *linkage matrix*) |
+| `fcluster` | cuts the tree into flat clusters |
+| `dendrogram` | draws the tree |
+| `cophenet` | (imported; the notebook computes its own cophenetic distance) |
+| `pdist`, `squareform` | all pairwise distances as a vector / as a square matrix |
+| `linear_sum_assignment` | the Hungarian algorithm: matches cluster labels between two clusterings |
+| `skew` | measures how lopsided a distribution is |
+| `KMeans, DBSCAN, OPTICS, HDBSCAN, Birch` | the clustering algorithms |
+| `NearestNeighbors` | fast "who is within ε of me?" searches |
+| `adjusted_rand_score` | **ARI**: agreement of two clusterings (1 = identical, ≈0 = random) |
+| `silhouette_score` | how well separated clusters are (−1…1, higher = better) |
+| `Transformer` | converts latitude/longitude to kilometres |
+
+```python
+DATA, FIG, OUT = Path("data"), Path("figs"), Path("results")
+for p in (FIG, OUT): p.mkdir(exist_ok=True)
+VERS = {k: md.version(k) for k in [...]}
+```
+
+Defines the three folders and creates `figs/` and `results/` if missing. `VERS` records exact library versions and prints them.
+
+```python
+INK, BLUE, TEAL, ORANGE, GRID, ICE = "#0F172A", "#0284C7", "#0D9488", "#F97316", "#CBD5E1", "#F8FAFC"
+CL = [BLUE, ORANGE, TEAL, "#7C3AED", "#CA8A04", "#BE123C", "#64748B", INK]
+MK = ["o", "s", "^", "D", "v", "P", "X", "h"]
+plt.rcParams.update({...})
+```
+
+A fixed colour palette `CL` and marker list `MK`. Cluster *k* always gets colour `CL[k]` **and** shape `MK[k]`, so figures stay readable in black-and-white. `rcParams` sets the look of every plot (background, fonts, 200 dpi).
+
+```python
+RES = {"versions": VERS}
+def save(fig, name): ...
+def jsonable(o): ...
+def canon(lab): ...
+def prov_csv(df, path, lines): ...
+```
+
+| Helper | Purpose |
+|---|---|
+| `RES` | a dictionary that collects every number; written to `results/results.json` at the end |
+| `save(fig, name)` | saves a figure into `figs/` and closes it |
+| `jsonable(o)` | converts numpy types into plain Python so they can be saved as JSON |
+| `canon(lab)` | **canonical relabelling**: renames labels by order of first appearance, so `[2,2,0,1]` and `[0,0,1,2]` are recognised as the *same partition*. Cluster numbers are arbitrary, so this is needed to compare clusterings |
+| `prov_csv(df, path, lines)` | writes a CSV whose first lines are `#` comments documenting the data source |
+
