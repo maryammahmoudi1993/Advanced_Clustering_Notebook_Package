@@ -95,3 +95,47 @@ Full column dictionaries are in [data/README.md](data/README.md). In short:
 
 ![Ridgecrest map](docs/images/dataset_ridgecrest_map.png)
 
+---
+
+## 4. Clustering in one page
+
+**Clustering** groups objects so that objects in the same group are more similar to each other than to those in other groups. There is no "correct answer" column: it is *unsupervised* learning, so you judge a result by whether it is useful and stable.
+
+Every clustering method must answer three questions:
+
+1. **How do we measure closeness?** Here: Euclidean distance `d(x, y) = sqrt(Σ (xᵢ − yᵢ)²)`.
+2. **What is a cluster?** A compact blob (K-means), a branch of a tree (hierarchical), or a dense region (DBSCAN).
+3. **How many clusters?** Fixed in advance (K-means), chosen by cutting a tree (hierarchical), or discovered from density (DBSCAN).
+
+| Family | Idea | Needs K? | Finds odd shapes? | Handles noise? |
+|---|---|---|---|---|
+| **K-means** | K centres; assign each point to its nearest centre; move centres to the mean; repeat | yes | no (round blobs) | no |
+| **Hierarchical (AGNES)** | start with every point alone; repeatedly merge the two closest clusters | no (cut the tree) | depends on linkage | partly |
+| **Hierarchical (DIANA)** | start with one cluster; repeatedly split | no | depends | partly |
+| **BIRCH** | summarise points into tiny Clustering Features, then cluster the summaries | optional | no | partly |
+| **DBSCAN** | a cluster = a dense region; sparse points are noise | no | yes | yes |
+| **OPTICS / HDBSCAN** | DBSCAN without one fixed density threshold | no | yes | yes |
+
+### The key ideas used in the notebook
+
+* **Feature scaling matters.** Distances are dominated by the largest numbers, so we use `log10` for the skewed spending data.
+* **K-means objective:** minimise `J = Σₖ Σ_{x∈Cₖ} ‖x − μₖ‖²` (total squared distance to the cluster centre). Each Lloyd iteration can only decrease `J`.
+* **Linkage** = the rule that defines the distance *between two clusters* in hierarchical clustering:
+
+| Linkage | Distance between clusters A and B | Typical behaviour |
+|---|---|---|
+| Single | smallest distance between a point of A and a point of B | long "chains" |
+| Complete | largest such distance | compact clusters |
+| Average | mean of all cross-pair distances | in between |
+| Centroid | distance between the cluster means | can have *inversions* |
+| Median (WPGMC) | distance between midpoint representatives | can have *inversions* |
+| Medoid | distance between the most central real members | classroom rule |
+| Ward | increase in within-cluster squared error when merged | balanced, K-means-like |
+
+* **Inversion:** a merge that happens at a *lower* height than the previous merge, so the dendrogram "goes backwards". It can occur with Centroid and Median linkage.
+* **DBSCAN** has two parameters: radius `ε` (eps) and `MinPts`. A point is **core** if at least `MinPts` points (itself included) lie within `ε`; **border** if it is not core but lies within `ε` of a core point; otherwise **noise**. A cluster is a set of core points connected through `ε`-neighbourhoods plus their border points.
+
+![DBSCAN point types in a hand-traced window](figs/r2_H_status.png)
+
+*Figure: blue circles are core points, orange triangles are border points, grey crosses are noise. The thin circles have radius ε = 1 km.*
+
