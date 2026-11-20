@@ -597,3 +597,38 @@ cross = [(e, d) for e, d in edges.items() if REF[e[0]] != REF[e[1]]]
 
 *Left: squares are BIRCH leaf summaries of the 40 points. Right: the 3-NN graph; orange edges cross cluster borders.*
 
+---
+
+## 7. Part C: Ridgecrest earthquakes
+
+Teaching question: *how can an analyst find dense concentrations of events and isolated events after a big earthquake?* A "cluster" here is a **concentration of recorded events** in a 2-D map. Calling it a fault needs independent geological evidence.
+
+### C1. Reading the catalogue (cell `[29]`)
+
+```python
+RAW = DATA / "ridgecrest_shelly2019_catalog_raw.txt"
+lines = RAW.read_text().splitlines(); hdr = [l for l in lines if l.startswith("#")]
+src_line = [i + 1 for i, l in enumerate(lines) if l.strip() and not l.startswith("#")]
+```
+
+Reads the file as text, collects the `#` header and records the **line number** of each data row (`source_line`) so every event can be located in the original file.
+
+```python
+ev = pd.read_csv(RAW, comment="#", sep=r"\s+", header=None, names=[...])
+ev["t_utc"] = pd.to_datetime(dict(year=ev.year, month=ev.month, day=ev.day, hour=ev.hour, minute=ev.minute)) + pd.to_timedelta(ev.second, unit="s")
+```
+
+* `comment="#"` skips header lines; `sep=r"\s+"` splits on any run of spaces; `header=None` + `names=` supply the 11 column names.
+* The time columns are combined into one timestamp; seconds (with decimals) are added as a timedelta.
+
+```python
+assert len(ev) == 34091 and ev.event_id.is_unique and ev.t_utc.is_monotonic_increasing
+ms = ev.loc[ev.mag.idxmax()]; assert ms.mag == 7.1
+```
+
+Sanity checks (34,091 events, unique IDs, sorted by time), then `idxmax` finds the **mainshock**: magnitude 7.1 on 2019-07-06 03:19:52.86 at (35.7718° N, −117.5942° E), depth 3.2 km. The file gives no time zone; the notebook treats the times as UTC because the M7.1 time matches the published 03:19:53 UTC.
+
+![Events per day and magnitude distribution](docs/images/dataset_ridgecrest_mag_time.png)
+
+*Left: many small events and few large ones (log scale). Right: activity peaks on the mainshock day (07-06) and then decays.*
+
