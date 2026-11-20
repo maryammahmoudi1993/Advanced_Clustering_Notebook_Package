@@ -61,13 +61,13 @@ What happens when it runs:
 * all plots are written to `figs/` (the images you see below),
 * all numbers are written to `results/results.json`,
 * the derived CSV files in `data/` are regenerated,
-* about 20 assertions check that the hand-written algorithms give the same answer as scikit-learn/SciPy. The last line printed is `All assertions passed.`
+* many `assert` checks verify that the hand-written algorithms give the same answer as scikit-learn/SciPy. The last line printed is `All assertions passed.`
 
 Notes:
 
 * Run the notebook **from the project folder**: all paths are relative (`data/`, `figs/`, `results/`).
 * The notebook uses recent library versions (see `requirements.txt`). If `pip install` cannot find one, install the newest available versions; the algorithms do not change.
-* Full run time is typically a few minutes; the slowest part is the DBSCAN timing comparison in section 2.4.
+* The slowest part is the DBSCAN timing comparison (cell `[38]`); run time depends on your computer.
 
 ## 2. Project layout
 
