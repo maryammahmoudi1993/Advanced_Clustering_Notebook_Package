@@ -632,3 +632,26 @@ Sanity checks (34,091 events, unique IDs, sorted by time), then `idxmax` finds t
 
 *Left: many small events and few large ones (log scale). Right: activity peaks on the mainshock day (07-06) and then decays.*
 
+### C2. From degrees to kilometres (cells `[31]`)
+
+Degrees of longitude and latitude are not the same length on the ground, so a circle of radius ε in degrees would be an ellipse in reality. The notebook projects every epicentre onto a flat plane in km, centred on the mainshock:
+
+```python
+TR = Transformer.from_crs("EPSG:4326", f"+proj=aeqd +lat_0={ms.lat} +lon_0={ms.lon} +datum=WGS84 +units=km", always_xy=True)
+ev["x_km"], ev["y_km"] = TR.transform(ev.lon.values, ev.lat.values)
+```
+
+* `EPSG:4326` = ordinary latitude/longitude on the WGS84 ellipsoid.
+* `+proj=aeqd` = **azimuthal equidistant** projection: distances from the centre are exact and nearby distances are almost exact.
+* `+units=km` makes `x_km` (east) and `y_km` (north) directly usable as Euclidean coordinates.
+* `always_xy=True` fixes the argument order as (lon, lat).
+
+To prove the projection is accurate the code compares 5,000 random pairs with the great-circle **haversine** distance:
+
+```python
+def haversine(la1, lo1, la2, lo2, Rk=6371.0088): ...
+rel = np.abs(dp - dh) / np.maximum(dh, 1e-9)
+```
+
+Result: the largest relative error for pairs more than 5 km apart is **0.23 %**. Note that the analysis uses epicentres only, so **depth is ignored** (we measure what that costs in section C6).
+
