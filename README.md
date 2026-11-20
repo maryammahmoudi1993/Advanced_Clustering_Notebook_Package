@@ -417,3 +417,70 @@ Checks that the hand-coded merge heights equal SciPy's `linkage(XS8, "average")`
 | 6 | f + {a,b,c,d,e,g} | 0.730 |
 | 7 | h + the rest | 1.110 |
 
+### B6. DIANA by hand (cell `[16]`)
+
+**Concept.** DIANA = *divisive analysis*, "top-down" (Kaufman and Rousseeuw, 1990):
+
+1. Start with all points in one cluster. Pick the cluster with the **largest diameter** (largest pairwise distance).
+2. The **splinter** group starts with the member whose *average* distance to the others is largest.
+3. Repeatedly move into the splinter group the point `i` with the largest positive value of `mean d(i, rest) − mean d(i, splinter)`. Stop when no value is positive.
+4. The split height is the diameter of the cluster that was split.
+
+```python
+diam = [D[np.ix_(c, c)].max() if len(c) > 1 else -1 for c in clusters]; ci = int(np.argmax(diam))
+avg = {i: float(D[i, [j for j in C if j != i]].mean()) for i in C}; s = max(C, key=lambda i: (avg[i], -i))
+```
+
+* `D[np.ix_(c, c)]` extracts the sub-matrix of one cluster; `.max()` is its diameter; `argmax` picks the widest cluster.
+* `avg` = each member's mean distance to the others; `s` is the most "isolated" member, and `-i` breaks ties toward the smaller index.
+
+```python
+while len(Rm) > 1:
+    tab = {i: (mean_dist_to_remaining, mean_dist_to_splinter) for i in Rm}
+    diffs = {i: a - b for i, (a, b) in tab.items()}; best = max(Rm, key=lambda i: (diffs[i], -i))
+    if diffs[best] <= 0: break
+    S.append(best); Rm.remove(best)
+```
+
+This is the moving loop of step 3: compute the table, move the best candidate, stop when nobody prefers the splinter group.
+
+Because DIANA's height is the *diameter* it differs from a generic "bisecting" method that would just run 2-means on a cluster.
+
+### B7. Seven linkage rules on the same 8 customers (cells `[18]`, `[19]`)
+
+All seven methods share the first three merges (d+e, a joins, c+g), leaving the state **{a,d,e}, {b}, {c,g}, {f}, {h}**. Then each rule answers one question: *which two clusters merge next?*
+
+```python
+def partition_k(Z, n, k): ...      # cut the tree by merge ORDER
+def cophenetic(Z, n): ...          # height at which each pair of points first joins
+def reps_wpgmc(Z, X): ...          # Median (WPGMC) representatives
+```
+
+* `partition_k` replays the first `n − k` merges to obtain `k` clusters. It is used instead of a height cut because with *inversions* a height threshold can be ambiguous.
+* `cophenetic` fills a matrix with the merge height of every pair; its correlation with the real distances measures how faithfully the tree preserves the data.
+* `reps_wpgmc`: in Median linkage the representative of a merged cluster is the **midpoint of its two parents' representatives** (not the coordinate-wise median, not the centroid).
+
+`cand_value(method, ci, cj)` computes each rule's cost for a candidate pair:
+
+| Method | Formula in code |
+|---|---|
+| Single | `cross.min()` |
+| Complete | `cross.max()` |
+| Average | `cross.mean()` |
+| Centroid | distance between the two cluster means |
+| Median | distance between WPGMC representatives |
+| Medoid | `D8[medoid_of(A), medoid_of(B)]` |
+| Ward | `nA·nB/(nA+nB) · ‖cA − cB‖²` (increase in error, ΔESS) |
+
+**Which pair does each rule merge next?**
+
+| Rule | Next merge |
+|---|---|
+| Single, Median | {a,d,e} + {c,g} |
+| Complete, Average, Centroid, Medoid | {a,d,e} + b |
+| Ward | b + {c,g} |
+
+Same data, same state, three different decisions: the **linkage rule is a modelling choice**, not a detail.
+
+**Inversions.** On S8 both Centroid and Median show one: after a merge at height 0.461 (Centroid) the next merge happens *lower*, at 0.427. A real dendrogram cannot be cut cleanly there, which is why `has_inversion` exists.
+
