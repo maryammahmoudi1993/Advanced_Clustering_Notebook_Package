@@ -694,3 +694,68 @@ Three ways of finding core points (scikit-learn's `core_sample_indices_`, the k-
 
 *How to read it: each blue point is an event sorted by its 5-distance (log scale). Horizontal lines are the three ε candidates. Events below a line are core points at that ε.*
 
+### C4. DBSCAN by hand (cell `[34]`)
+
+**Algorithm.** For each unvisited point `i` (in time order):
+
+1. Find its ε-neighbours `N(i)` (including itself).
+2. If fewer than `MinPts`: mark it **provisional noise** (it may be rescued later as a border point).
+3. Otherwise start a new cluster, put `N(i)` in a FIFO queue, and keep expanding: every queued point joins the cluster, and if it is also core, its own neighbours are queued.
+
+```python
+def dbscan_trace(X, eps, m):
+    n = len(X); Dm = np.sqrt(((X[:, None] - X[None]) ** 2).sum(-1)); N = [np.where(Dm[i] <= eps)[0] for i in range(n)]
+    core = np.array([len(a) >= m for a in N]); UNV, NOI = -9, -1; lab = np.full(n, UNV)
+```
+
+* `Dm` = full distance matrix; `N[i]` = indices within ε of point `i` (self included).
+* `core[i]` = `|N[i]| >= m`.
+* `lab` holds a cluster number per point: `-9` = unvisited, `-1` = noise, `0, 1, 2…` = clusters.
+
+```python
+    for i in range(n):
+        if lab[i] != UNV: continue
+        snap("query", i, n_eps=len(N[i]))
+        if not core[i]: lab[i] = NOI; snap("provisional_noise", i); continue
+        cid += 1; lab[i] = cid; queue = [int(j) for j in N[i] if j != i]; snap("seed", i)
+```
+
+Outer loop: skip visited points; non-core points become provisional noise; a core point opens cluster `cid` and seeds the queue. `snap(...)` logs every step so the run can be replayed on a slide.
+
+```python
+        while queue:
+            j = queue.pop(0)
+            if lab[j] == NOI: lab[j] = cid; rescued.append(int(j)); snap("noise_reached_becomes_border", j); continue
+            if lab[j] != UNV: continue
+            lab[j] = cid; snap("query", j, n_eps=len(N[j]))
+            if core[j]:
+                queue.extend(int(k) for k in N[j] if lab[k] in (UNV, NOI) and int(k) not in queue); snap("core_expands", j)
+            else: snap("border_absorbed", j)
+```
+
+Expansion loop: `queue.pop(0)` takes the oldest item (FIFO). A noise point reached from a core point is **rescued** as a border point; unvisited points join the cluster; a core point adds its own neighbours to the queue, a non-core one is just absorbed as a border point and does not expand.
+
+**A window small enough to follow by hand.** Tracing 3,505 events is impossible, so the notebook searches for a small square window **H** that shows all four situations:
+
+```python
+for hw in (1.5, 2.0, 2.5):
+    for ci in range(len(XR)):
+        idx = np.where((np.abs(XR[:, 0] - XR[ci, 0]) <= hw) & (np.abs(XR[:, 1] - XR[ci, 1]) <= hw))[0]
+        if not 18 <= len(idx) <= 30: continue
+        ...
+```
+
+It scans windows of half-width 1.5, 2.0, 2.5 km centred on events, keeps the first with 18 to 30 events that contains at least 3 core points, 2 border points, 2 noise points and 1 rescued point. Result: half-width **1.5 km**, **19 events**: 13 core, 4 border, 2 noise, and event `e03` is provisional noise that is later reached and becomes a border point.
+
+```python
+assert (coreH == core_sk).all() and ((labH == -1) == (sk_h.labels_ == -1)).all() ...
+```
+
+Again the hand-written algorithm is checked against scikit-learn: same core set, same noise set, same partition of the core points. (Border points reachable from two clusters can legitimately differ, which is why the check is done on cores.)
+
+The notebook also compares each event's status in the *small* H-only fit with its status in the *full* R fit: they agree for **16 of 19** events. Cutting a window removes neighbours from outside, so apparent density drops: a small view is for teaching, not for conclusions.
+
+![Hand-trace window H](figs/r2_H_status.png)
+
+*Blue circles = core, orange triangles = border, grey crosses = noise. Thin circles show ε = 1 km around every event. Numbers are the event labels e01…e19.*
+
