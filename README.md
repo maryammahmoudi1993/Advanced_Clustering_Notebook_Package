@@ -361,3 +361,59 @@ for k in Ks: km = KMeans(k, n_init=10, random_state=0).fit(XS40); inertia.append
 | (c) Initialization | 20 single random starts | 9 different partitions, J from 7.03 to 7.51: bad starts give worse local optima |
 | (d) Geometry | the decision regions | straight (Voronoi) boundaries: K-means can only make convex, roughly round clusters |
 
+### B5. AGNES (average linkage) by hand (cell `[14]`)
+
+**Concept.** AGNES = *agglomerative nesting*, "bottom-up":
+
+1. Every point is its own cluster; compute the distance matrix.
+2. Merge the two clusters with the **smallest** distance.
+3. Update the matrix (the Lance-Williams formula) and repeat until one cluster is left.
+
+(If you have a *similarity* instead of a distance, you merge the **largest** value; the pair chosen is the same.)
+
+```python
+D8 = squareform(pdist(XS8)); names = list(S8.pt)
+```
+
+The 8 × 8 matrix of Euclidean distances between customers `a`…`h` in log10 space.
+
+```python
+def agnes_by_hand(D, method="average"):
+    n = len(D); act = [[i] for i in range(n)]; M = D.copy().astype(float); steps = []
+    while len(act) > 1:
+        best = None
+        for i, j in itertools.combinations(range(len(act)), 2):
+            if best is None or M[i, j] < best[0] - 1e-12: best = (M[i, j], i, j)
+```
+
+* `act` = list of active clusters (each a list of point indices).
+* The double loop scans every pair and remembers the smallest `M[i, j]` (ties: first pair wins).
+
+```python
+        for k in range(len(act)):
+            if k in (i, j): continue
+            if method == "single": v = min(M[i, k], M[j, k])
+            elif method == "complete": v = max(M[i, k], M[j, k])
+            else: v = (ni * M[i, k] + nj * M[j, k]) / (ni + nj)
+```
+
+The **Lance-Williams update**: the distance from the new merged cluster to every other cluster `k` is computed from the old distances. Single takes the min, Complete the max, Average the size-weighted mean. Then the matrix is rebuilt without rows `i, j` and with one new row/column for the merged cluster.
+
+```python
+assert np.allclose([s["height"] for s in AG], Zavg8[:, 2]) and ...
+```
+
+Checks that the hand-coded merge heights equal SciPy's `linkage(XS8, "average")`.
+
+**Result on S8 (average linkage):**
+
+| Merge | Clusters joined | Height |
+|---|---|---|
+| 1 | d + e | 0.081 |
+| 2 | a + {d,e} | 0.146 |
+| 3 | c + g | 0.191 |
+| 4 | b + {a,d,e} | 0.466 |
+| 5 | {c,g} + {a,b,d,e} | 0.481 |
+| 6 | f + {a,b,c,d,e,g} | 0.730 |
+| 7 | h + the rest | 1.110 |
+
