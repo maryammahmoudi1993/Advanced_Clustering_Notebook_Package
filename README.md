@@ -530,3 +530,35 @@ lab = fcluster(Zav, hcut, "distance") - 1
 
 *The orange line is the cut. Every vertical branch it crosses becomes one cluster.*
 
+### B10. Interpreting the clusters (cell `[25]`)
+
+Clusters are fitted only on the two log features; the other four categories, `Channel` and `Region` are looked at *afterwards* to describe them. The reference partition is **Ward, K = 4** on S40.
+
+```python
+REF = PM["ward"]; S40["ward4"] = REF + 1
+prof = S40.groupby("ward4")[CAT].median().round(0).astype(int)
+ct_ch = pd.crosstab(S40.ward4, S40.Channel)
+```
+
+* `groupby("ward4")[CAT].median()` - the typical (median) spending of each cluster in every category: a **cluster profile**.
+* `pd.crosstab` - counts of Horeca/Retail (and Region) inside each cluster.
+
+Median annual spending (m.u.) of the four Ward clusters:
+
+| Cluster | n | Fresh | Milk | Grocery | Frozen | Detergents_Paper | Delicassen | Reading |
+|---|---|---|---|---|---|---|---|---|
+| 1 | 11 | 5,181 | 9,810 | 13,567 | 1,465 | 4,973 | 1,776 | grocery / milk / detergent heavy |
+| 2 | 13 | 12,759 | 7,330 | 6,964 | 1,646 | 2,730 | 2,503 | high Fresh, broad basket |
+| 3 | 6 | 1,354 | 3,658 | 2,568 | 470 | 498 | 900 | small accounts |
+| 4 | 10 | 11,150 | 1,780 | 1,708 | 1,217 | 344 | 570 | Fresh-focused |
+
+![Profile heat map](figs/w1_profiles.png)
+
+![Ward K=4 scatter](figs/w1_ward4_scatter.png)
+
+*The names in the "Reading" column are our own descriptive labels, not something the algorithm knows.*
+
+**A wider check.** The notebook then runs Ward with K = 4 on **all 440** customers and compares it with the S40 result on the same 40 rows: `adjusted_rand_score(REF, Pall[S40.source_row_id.values - 1])` = **0.55**. The two partitions agree moderately, a reminder that a 40-row sample is a teaching tool and conclusions must be re-checked on the full data.
+
+![Ward K=4 on all 440 rows](figs/w1_wide440.png)
+
