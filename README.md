@@ -785,3 +785,35 @@ Individual maps (core points are circles, border points triangles, same colour =
 ![eps = 1.0 km](figs/r2_eps_candidate.png)
 ![eps = 2.0 km](figs/r2_eps_larger.png)
 
+### C6. Thinning, depth, order and cost (cell `[38]`)
+
+**Thinning.** Keep only events with magnitude ≥ 2.0 (`R_M2`, 1,890 events) and refit with the same ε:
+
+```python
+R2 = R[R.mag >= 2.0].reset_index(drop=True); X2 = R2[["x_km", "y_km"]].values
+```
+
+Removing small events removes neighbours, so the median 5-distance grows from 0.217 km to 0.322 km and the noise share rises:
+
+| ε (km) | Noise in R | Noise in R_M2 |
+|---|---|---|
+| 0.5 | 10.2 % | 18.6 % |
+| 1.0 | 4.9 % | 7.2 % |
+| 2.0 | 1.9 % | 2.5 % |
+
+![Effect of thinning](figs/r2_thinning.png)
+
+*Same ε, fewer events means fewer neighbours, so more points are labelled noise. A filter that looks harmless (drop tiny events) changes what DBSCAN sees.*
+
+**Depth.**
+
+```python
+X3 = np.c_[XR, R.depth_km.values]
+```
+
+Adds depth as a third coordinate. At ε = 1 km the number of core points drops from 3,292 (2-D) to 2,741 (3-D) and the median neighbour count falls from 46 to 13: events at the same map position but different depths are neighbours in 2-D and not in 3-D.
+
+**Traversal order.** A border point reachable from two clusters goes to whichever cluster reaches it first. The code refits with the rows reversed: at ε = 0.5 km, 6 border points are reachable from two clusters and 2 change cluster; at ε = 1.0 and 2.0 km none are affected.
+
+**Cost.** `DBSCAN(..., algorithm="brute" / "kd_tree" / "ball_tree")` is timed on 24 h, 72 h and all post-mainshock events. Absolute times depend on your computer; read the *trend*: cost grows with the number of neighbour entries (87 thousand at ε = 0.5 km, 279 thousand at 1 km, 841 thousand at 2 km), which is why a large ε is expensive.
+
