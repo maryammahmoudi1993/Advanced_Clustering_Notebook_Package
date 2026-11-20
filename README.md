@@ -655,3 +655,42 @@ rel = np.abs(dp - dh) / np.maximum(dh, 1e-9)
 
 Result: the largest relative error for pairs more than 5 km apart is **0.23 %**. Note that the analysis uses epicentres only, so **depth is ignored** (we measure what that costs in section C6).
 
+### C3. The analysis set R and the k-distance graph (cell `[33]`)
+
+```python
+R = ev[(ev.t_utc > ms.t_utc) & (ev.t_utc <= ms.t_utc + pd.Timedelta(hours=24))].reset_index(drop=True)
+XR = R[["x_km", "y_km"]].values; MINPTS = 5
+```
+
+**R** = events strictly after the mainshock and within the next 24 h: **3,505 events**, magnitude 0.59 to 5.5. The catalogue is less complete in the first hours after a large shock, so R describes *recorded* events only. `XR` is the (x, y) matrix, and `MINPTS = 5` is the DBSCAN density threshold.
+
+![Analysis set R in kilometres](docs/images/dataset_ridgecrest_R_km.png)
+
+**How to choose ε: the k-distance graph.**
+
+```python
+def kdist(X, m=MINPTS):
+    return NearestNeighbors(n_neighbors=m).fit(X).kneighbors(X)[0][:, -1]
+```
+
+For each event, the distance to its 5th nearest event *counting itself* (the nearest neighbour of a training point is itself at distance 0). A point is a **core point** exactly when `kdist ≤ ε`. If you sort these distances, small values are dense areas and the sharp rise at the end is noise; a good ε sits at the "knee".
+
+```python
+def knee(a):
+    a = np.sort(a); xs = np.arange(len(a)) / (len(a) - 1); ys = (a - a.min()) / (a.max() - a.min()); i = int(np.argmax(xs - ys))
+```
+
+A simple knee finder: scale the sorted curve to the unit square and take the point farthest below the straight chord joining its ends.
+
+The three ε values used from here on are **0.5 km (smaller), 1.0 km (candidate), 2.0 km (larger)**.
+
+```python
+assert (core_flag == (kd <= EPS["candidate"])).all() and (core_flag == (cnt >= MINPTS)).all()
+```
+
+Three ways of finding core points (scikit-learn's `core_sample_indices_`, the k-distance rule, and a brute-force neighbour count) must agree for all 3,505 events.
+
+![k-distance graph](figs/r2_kdist.png)
+
+*How to read it: each blue point is an event sorted by its 5-distance (log scale). Horizontal lines are the three ε candidates. Events below a line are core points at that ε.*
+
