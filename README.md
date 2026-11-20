@@ -845,3 +845,46 @@ Results: OPTICS finds **48** clusters (2,149 noise), HDBSCAN **36** clusters (1,
 
 *Left: the reachability plot with the three ε values as horizontal lines; every valley below a line is a cluster at that ε. Right: HDBSCAN clusters on the map; grey crosses are noise.*
 
+### C8. Saving everything (cell `[42]`)
+
+```python
+(OUT / "results.json").write_text(json.dumps(jsonable(RES), indent=1))
+```
+
+Writes every number collected in `RES` to `results/results.json`, then prints a summary and `All assertions passed.`
+
+---
+
+## 8. Choosing an algorithm
+
+| If your data … | Try | Why |
+|---|---|---|
+| are roughly round blobs and you know K | K-means | fast, simple |
+| need a tree / several levels of granularity | hierarchical (Ward or Average first) | one tree, many cuts |
+| are very large | BIRCH | one pass, summaries instead of points |
+| have irregular shapes and noise | DBSCAN | no K, finds arbitrary shapes, labels noise |
+| have regions of different density | OPTICS or HDBSCAN | no single ε |
+
+Lessons the two case studies show:
+
+1. **Preprocess first** (log transform, projection to km): the algorithm only sees the numbers you give it.
+2. **Every parameter is a modelling choice** (K, linkage rule, cut height, ε, MinPts). Show how conclusions change when you vary it.
+3. **Validate hand-written code against a library** (the notebook's `assert` lines).
+4. **Describe, do not over-interpret.** Cluster names and "faults" are human interpretation.
+
+## 9. Exercises
+
+1. Change `CUTS = [2.40, 1.80, 1.40]` in cell `[23]` to other heights. When does the number of clusters change?
+2. In cell `[27]` change Birch `threshold` from 0.25 to 0.1 and 0.5. How many leaf sub-clusters do you get?
+3. In cell `[33]` change `MINPTS` to 8. How does the k-distance graph move, and which ε would you now choose?
+4. Add `Milk` to the features (log10) and cluster with Ward. Do the profiles change?
+5. Try `EPS["candidate"] = 0.7` and compare the number of clusters with 0.5 and 1.0 km.
+6. Run K-means on S8 with a different `INIT` (for example `[1, 4, 6]`). Does it converge to the same partition?
+
+## 10. Credits and licences
+
+* **Course:** Data Mining, Professor Nadimi. Notebook and worked examples by Maryam Mahmoudi.
+* **Wholesale customers:** UCI Machine Learning Repository, DOI 10.24432/C5030X, CC BY 4.0.
+* **Ridgecrest catalogue:** D. R. Shelly, USGS data release, DOI 10.5066/P9JN6H0N, CC0.
+* **Libraries:** NumPy, pandas, SciPy, scikit-learn, Matplotlib, pyproj.
+* Hierarchical and DBSCAN algorithms follow the standard textbook definitions: Kaufman and Rousseeuw (1990) for DIANA; Ester et al. (1996) for DBSCAN; Ankerst et al. (1999) for OPTICS; Campello et al. (2013) for HDBSCAN; Zhang et al. (1996) for BIRCH.
