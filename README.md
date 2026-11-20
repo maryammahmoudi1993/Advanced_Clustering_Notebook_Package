@@ -514,3 +514,19 @@ Cluster numbers are arbitrary, so `map_to` builds a contingency table against th
 
 *Same data, same K = 4, different groupings: the choice of linkage changes the clusters.*
 
+### B9. Cutting the dendrogram (cell `[23]`)
+
+Complete linkage has no inversions and a clear meaning: the height is the **largest distance between any two customers inside the cluster**, so a cut at height `h` guarantees no pair inside a cluster is farther apart than `h`.
+
+```python
+lab = fcluster(Zav, hcut, "distance") - 1
+```
+
+`fcluster(..., "distance")` cuts at height `hcut` and returns a cluster number per customer (minus 1 to start from 0). The code then renumbers clusters by size and saves a dendrogram with the cut line plus a scatter plot for each of three cuts (heights 2.40, 1.80 and 1.40, chosen inside gaps between merge heights). A lower cut line gives more, smaller clusters.
+
+![Cut at 2.40](figs/w1_cut_state1.png)
+![Cut at 1.80](figs/w1_cut_state2.png)
+![Cut at 1.40](figs/w1_cut_state3.png)
+
+*The orange line is the cut. Every vertical branch it crosses becomes one cluster.*
+
