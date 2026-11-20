@@ -1,0 +1,13 @@
+# Source: UCI Machine Learning Repository, Wholesale customers (id 292), DOI 10.24432/C5030X, CC BY 4.0; file 'Wholesale customers data.csv' (unchanged copy in data/).
+# source_row_id = 1-based data-row number in that file (header excluded). Spending columns: annual spending, monetary units (m.u.). lf = log10(Fresh), lg = log10(Grocery).
+# Selection: source_row_id % 11 == 2 (S40); S8 = every 5th row of S40 starting at position 0. Channel/Region are NOT used in distances.
+# S8 = hand-trace subset (n=8), point labels a-h.
+pt,source_row_id,Channel,Region,Fresh,Milk,Grocery,Frozen,Detergents_Paper,Delicassen,lf,lg
+a,2,2,3,7057,9810,9568,1762,3293,1776,3.848620117434134,3.980821166644336
+b,57,2,3,4098,29892,26866,2616,17740,1340,3.612571954065176,4.429203010413709
+c,112,2,3,12579,11114,17569,805,6457,1519,4.099646117123231,4.24474704283614
+d,167,2,3,4822,6721,9170,993,4973,3637,3.683227206041435,3.962369335670021
+e,222,1,1,5396,7503,10646,91,4167,239,3.732071940999867,4.027186461836736
+f,277,1,3,27901,3749,6964,4479,603,2503,4.445619769105104,3.8428587624452937
+g,332,2,2,11223,14881,26839,1234,9606,1102,4.050108962917868,4.428766330328082
+h,387,1,3,1206,3620,2857,1945,353,967,3.0813473078041325,3.455910240382743
