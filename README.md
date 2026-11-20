@@ -217,3 +217,91 @@ def prov_csv(df, path, lines): ...
 | `canon(lab)` | **canonical relabelling**: renames labels by order of first appearance, so `[2,2,0,1]` and `[0,0,1,2]` are recognised as the *same partition*. Cluster numbers are arbitrary, so this is needed to compare clusterings |
 | `prov_csv(df, path, lines)` | writes a CSV whose first lines are `#` comments documenting the data source |
 
+---
+
+## 6. Part B: Wholesale customers
+
+Teaching question: *can we find customer purchasing profiles, and which profiles survive when we change the linkage rule or the tree cut?*
+
+### B1. Loading and checking the data (cell `[4]`)
+
+```python
+w = pd.read_csv(DATA / "Wholesale_customers_data.csv")
+w.insert(0, "source_row_id", np.arange(1, len(w) + 1))
+CAT = ["Fresh", "Milk", "Grocery", "Frozen", "Detergents_Paper", "Delicassen"]
+```
+
+* `read_csv` loads the 440 × 8 table.
+* `insert(0, "source_row_id", 1…440)` adds a stable ID column (row number in the original file) so any customer can be traced back later.
+* `CAT` lists the six spending columns.
+
+```python
+assert w.shape == (440, 9) and w.isna().sum().sum() == 0
+assert set(w.Channel) == {1, 2} and set(w.Region) == {1, 2, 3}
+assert w.Channel.value_counts().to_dict() == {1: 298, 2: 142} and ...
+```
+
+`assert` stops the notebook with an error if the file is not what we expect (9 columns after the new ID, no missing values, known category counts). This protects against a wrong or edited dataset.
+
+```python
+print(w[CAT].mean().round(2).to_dict())
+RES["wholesale_source"] = {...}
+```
+
+Prints the mean of each category and stores it in `RES`.
+
+### B2. Skew and the log transform (cell `[6]`)
+
+```python
+w["lf"], w["lg"] = np.log10(w.Fresh), np.log10(w.Grocery)
+```
+
+Creates `lf = log10(Fresh)` and `lg = log10(Grocery)`. **Why log?** A few customers spend 10-100× more than the typical one. In raw units those customers would completely decide every distance. In `log10` units, *equal ratios become equal distances* (+1 means ×10).
+
+```python
+sk = {"raw_skew": {c: float(skew(w[c])) ...}, "log10_skew": {...}}
+chan_med = w.groupby("Channel")[["Fresh", "Grocery"]].median()
+```
+
+`skew` quantifies lopsidedness: raw Fresh = **2.55**, raw Grocery = **3.58** (strongly right-skewed). After `log10` the values are −1.62 and −0.74: the long right tail is gone (a mild left tail remains). `groupby("Channel").median()` shows Horeca spends more on Fresh (median 9,582 vs 5,994) and Retail on Grocery (12,390 vs 2,684): the two channels move in opposite directions, which is why this plane is interesting.
+
+The plotting loop draws a 2×2 grid of histograms (raw on top, log below):
+
+![Skew before and after log10](figs/w1_skew.png)
+
+*How to read it: the top histograms have a huge spike near zero and a long right tail; the bottom ones are much more symmetric. Clustering on the bottom version is meaningful.*
+
+### B3. Choosing a reproducible sample (cells `[8]`, `[9]`)
+
+Hand-tracing an algorithm on 440 points is impossible, so the notebook uses two nested, reproducible samples:
+
+* **S40** (40 customers): `source_row_id % 11 == 2`
+* **S8** (8 customers): every 5th row of S40, labelled `a`…`h`
+
+So S8 ⊂ S40 ⊂ all 440 rows, and every hand calculation uses real customers.
+
+```python
+def medoid_linkage(X): ...
+```
+
+A *classroom* linkage rule (not in SciPy). Line by line:
+
+1. `D = squareform(pdist(X))` - full distance matrix.
+2. `members`, `med` - dictionaries: which points are in each cluster and which member is its **medoid** (the member with the smallest total distance to the others).
+3. The `while` loop runs until one cluster is left. Inside, `itertools.combinations(sorted(members), 2)` tries every pair of clusters, `d = D[med[a], med[b]]` is the distance between their medoids, and the closest pair `best` wins.
+4. The pair is merged, the new medoid computed, and a SciPy-style row `[a, b, distance, size]` is appended to `Z`.
+
+```python
+METHODS6 = ["single", "complete", "average", "centroid", "median", "ward"]
+def all_Z(X): return {**{m: linkage(X, m) for m in METHODS6}, "medoid": medoid_linkage(X)}
+def has_inversion(Z): return bool((np.diff(Z[:, 2]) < -1e-12).any())
+```
+
+`all_Z` builds the tree under all seven rules. `has_inversion` checks whether any merge height is lower than the one before it (`np.diff` of the height column < 0).
+
+The next block loops over every residue `r = 0…10` and start phase `p = 0…4`, and keeps the *first* combination for which S8 has (i) no tied distances, (ii) an inversion for both Centroid and Median linkage, and (iii) at least 3 different 4-cluster results across methods. It lands on **residue 2, phase 0** (checked by an `assert`). This is a **curated teaching sample**, not a random one, and the scan code lets you audit that.
+
+The last part of cell `[9]` builds `S40`, `S8`, saves them as CSV with `prov_csv`, and draws:
+
+![S8 inside S40 inside all 440 customers](figs/w1_subsets.png)
+
