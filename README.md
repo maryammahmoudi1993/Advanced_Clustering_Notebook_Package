@@ -305,3 +305,59 @@ The last part of cell `[9]` builds `S40`, `S8`, saves them as CSV with `prov_csv
 
 ![S8 inside S40 inside all 440 customers](figs/w1_subsets.png)
 
+### B4. K-means by hand (cells `[11]`, `[12]`)
+
+**Concept.** Pick K centres, then repeat two steps until nothing changes:
+
+1. **Assignment:** give each point to its nearest centre.
+2. **Update:** move each centre to the mean of its points.
+
+`J` (sum of squared distances to the own centre) never increases.
+
+```python
+def lloyd(X, init_idx, maxit=20):
+    c = X[init_idx].copy(); hist = []
+    for it in range(maxit):
+        d = np.linalg.norm(X[:, None] - c[None], axis=2); lab = d.argmin(1); J = float((d.min(1) ** 2).sum())
+        newc = np.array([X[lab == k].mean(0) for k in range(len(c))])
+        hist.append({...})
+        if np.allclose(newc, c): break
+        c = newc
+    return hist
+```
+
+| Line | Meaning |
+|---|---|
+| `c = X[init_idx].copy()` | the starting centres are the observations chosen by index |
+| `d = np.linalg.norm(X[:, None] - c[None], axis=2)` | broadcasting trick: an (n × K) table of distances from every point to every centre |
+| `lab = d.argmin(1)` | assignment step: nearest centre per point |
+| `J = ...(d.min(1) ** 2).sum()` | the objective for the current assignment |
+| `newc = ...X[lab == k].mean(0)` | update step: mean of each cluster |
+| `np.allclose(newc, c)` | converged when centres stop moving |
+
+`INIT = [0, 3, 7]` starts the centres on customers **a, d, h**. The loop takes 3 iterations and ends at `J = 0.4488`. Then
+
+```python
+km_sk = KMeans(3, init=XS8[INIT], n_init=1).fit(XS8)
+assert canon(km_sk.labels_) == canon(H[-1]["labels"]) and abs(km_sk.inertia_ - H[-1]["J"]) < 1e-9
+```
+
+proves the hand-written loop gives **exactly** the same partition and `J` as scikit-learn (`canon` makes the comparison independent of label numbering).
+
+**Practical effects on S40 (cell `[12]`).**
+
+```python
+for k in Ks: km = KMeans(k, n_init=10, random_state=0).fit(XS40); inertia.append(km.inertia_); sil.append(silhouette_score(...))
+```
+
+`n_init=10` runs 10 random starts and keeps the best; `random_state=0` makes it repeatable.
+
+![K-means practical effects](figs/w1_kmeans_effects.png)
+
+| Panel | What it teaches | Result |
+|---|---|---|
+| (a) Choosing K | `J` always falls as K grows (look for an "elbow"); silhouette measures separation | silhouette is highest at K = 4 (0.432) |
+| (b) Scaling | K-means on *raw* m.u. vs on log10 | the two partitions barely agree: ARI = −0.01 |
+| (c) Initialization | 20 single random starts | 9 different partitions, J from 7.03 to 7.51: bad starts give worse local optima |
+| (d) Geometry | the decision regions | straight (Voronoi) boundaries: K-means can only make convex, roughly round clusters |
+
