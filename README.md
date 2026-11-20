@@ -562,3 +562,38 @@ Median annual spending (m.u.) of the four Ward clusters:
 
 ![Ward K=4 on all 440 rows](figs/w1_wide440.png)
 
+### B11. BIRCH and CHAMELEON (cell `[27]`)
+
+**BIRCH** compresses data into **Clustering Features** `CF = (N, LS, SS)`: the point count, the linear sum and the sum of squares. Two properties make BIRCH scalable:
+
+* CFs are **additive**: `CF(A ∪ B) = CF(A) + CF(B)`, so a point can be absorbed without storing it.
+* From a CF you can recover the centroid `LS / N` and the radius `sqrt(SS/N − ‖LS/N‖²)`.
+
+```python
+def CF(P): P = np.atleast_2d(P); return {"N": len(P), "LS": P.sum(0), "SS": float((P ** 2).sum())}
+cf_de, cf_a, cf_ade = CF(XS8[[3, 4]]), CF(XS8[[0]]), CF(XS8[[0, 3, 4]])
+assert add["N"] == cf_ade["N"] and np.allclose(add["LS"], cf_ade["LS"]) ...
+```
+
+The code builds the CF of customers {d, e}, of {a}, and of {a, d, e}, then **asserts that CF(d,e) + CF(a) equals CF(a,d,e)**: the additivity property, verified on real numbers. The centroid of {a,d,e} is (3.755, 3.990) and its radius 0.075.
+
+```python
+br = Birch(threshold=0.25, branching_factor=4, n_clusters=None).fit(XS40)
+```
+
+`threshold` is the maximum radius of a leaf sub-cluster; `branching_factor` is the maximum number of children per tree node; `n_clusters=None` keeps the leaf sub-clusters as the output. The 40 customers are summarised by **10** leaf sub-clusters.
+
+**CHAMELEON** (illustration only; scikit-learn has no CHAMELEON) builds a k-nearest-neighbour graph, splits it into many small pieces and merges the pair with high *relative interconnectivity* and *relative closeness*.
+
+```python
+nn = NearestNeighbors(n_neighbors=4).fit(XS40); dk, ik = nn.kneighbors(XS40)
+edges = {(min(i, j), max(i, j)): d ...}
+cross = [(e, d) for e, d in edges.items() if REF[e[0]] != REF[e[1]]]
+```
+
+`n_neighbors=4` includes the point itself, so each point gets its 3 nearest neighbours (a 3-NN graph, 76 unique edges). `cross` lists the edges that connect *different* Ward clusters. Only 9 of 76 edges cross clusters, and they are longer (mean 0.48) than the average edge (0.27): clusters are connected internally and weakly connected to each other, which is the intuition CHAMELEON uses.
+
+![BIRCH sub-clusters and 3-NN graph](figs/w1_birch_chameleon.png)
+
+*Left: squares are BIRCH leaf summaries of the 40 points. Right: the 3-NN graph; orange edges cross cluster borders.*
+
