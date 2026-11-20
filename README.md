@@ -759,3 +759,29 @@ The notebook also compares each event's status in the *small* H-only fit with it
 
 *Blue circles = core, orange triangles = border, grey crosses = noise. Thin circles show ε = 1 km around every event. Numbers are the event labels e01…e19.*
 
+### C5. Three ε values on the same events (cell `[36]`)
+
+```python
+for nm, eps in EPS.items():
+    d_ = DBSCAN(eps=eps, min_samples=MINPTS).fit(XR); lab = d_.labels_
+    core = np.zeros(len(XR), bool); core[d_.core_sample_indices_] = True
+```
+
+Now we use scikit-learn's `DBSCAN`. `labels_` gives a cluster number per event (`-1` = noise); `core_sample_indices_` lists the core points. **Status of every event:** core = in `core_sample_indices_`; border = labelled but not core; noise = label −1. The code also renumbers clusters by size (0 = largest) and counts the neighbour entries scikit-learn has to materialise (a cost measure).
+
+| ε (km) | Clusters | Core | Border | Noise | Largest cluster sizes |
+|---|---|---|---|---|---|
+| 0.5 | 31 | 3,001 | 146 | 358 | 2,126, 226, 223, 177, 61 … |
+| 1.0 | 5 | 3,292 | 40 | 173 | 3,297, 13, 12, 5, 5 |
+| 2.0 | 2 | 3,416 | 22 | 67 | 3,432, 6 |
+
+This is the main lesson of DBSCAN: **ε is not a detail.** At 0.5 km the activity splits into 31 groups; at 1 km one giant cluster swallows 3,297 of the 3,505 events; at 2 km almost everything is a single cluster and noise nearly disappears.
+
+![Three eps values side by side](figs/r2_eps_triptych.png)
+
+Individual maps (core points are circles, border points triangles, same colour = same cluster; the star is the M7.1 epicentre):
+
+![eps = 0.5 km](figs/r2_eps_smaller.png)
+![eps = 1.0 km](figs/r2_eps_candidate.png)
+![eps = 2.0 km](figs/r2_eps_larger.png)
+
