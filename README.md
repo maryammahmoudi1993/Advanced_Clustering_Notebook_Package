@@ -817,3 +817,31 @@ Adds depth as a third coordinate. At ε = 1 km the number of core points drops f
 
 **Cost.** `DBSCAN(..., algorithm="brute" / "kd_tree" / "ball_tree")` is timed on 24 h, 72 h and all post-mainshock events. Absolute times depend on your computer; read the *trend*: cost grows with the number of neighbour entries (87 thousand at ε = 0.5 km, 279 thousand at 1 km, 841 thousand at 2 km), which is why a large ε is expensive.
 
+### C7. Beyond a single ε: OPTICS and HDBSCAN (cell `[40]`)
+
+DBSCAN uses one ε everywhere, but real density varies. Two successors remove that limit:
+
+* **OPTICS** orders the points so that every ε′ ≤ `max_eps` can be read from a single **reachability plot**: valleys are clusters, peaks are borders between them.
+* **HDBSCAN** builds a hierarchy over all densities and extracts the most stable clusters, with no global ε.
+
+```python
+op = OPTICS(min_samples=MINPTS, max_eps=EPS["larger"], cluster_method="xi", xi=0.05, min_cluster_size=20).fit(XR)
+reach = op.reachability_[op.ordering_]
+hd = HDBSCAN(min_cluster_size=20, min_samples=MINPTS, copy=True).fit(XR)
+```
+
+| Argument | Meaning |
+|---|---|
+| `min_samples` | density threshold (same role as MinPts) |
+| `max_eps` | largest radius OPTICS examines (2 km) |
+| `cluster_method="xi"`, `xi=0.05` | extract clusters where the reachability plot drops by at least 5 % |
+| `min_cluster_size=20` | ignore groups smaller than 20 events |
+| `op.ordering_` | the OPTICS visiting order (x-axis of the plot) |
+| `op.reachability_[op.ordering_]` | reachability distance in that order (y-axis) |
+
+Results: OPTICS finds **48** clusters (2,149 noise), HDBSCAN **36** clusters (1,286 noise).
+
+![OPTICS reachability plot and HDBSCAN map](figs/r2_optics_hdbscan.png)
+
+*Left: the reachability plot with the three ε values as horizontal lines; every valley below a line is a cluster at that ε. Right: HDBSCAN clusters on the map; grey crosses are noise.*
+
