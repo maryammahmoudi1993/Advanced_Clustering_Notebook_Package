@@ -9,7 +9,7 @@ Two real-world datasets, one for each case study in the notebook. The two **orig
 | `wholesale_S40_analysis_40rows.csv` | derived | 40 | every 11th customer (analysis subset) |
 | `wholesale_S8_hand_trace_8rows.csv` | derived | 8 | 8 customers for hand calculations |
 | `ridgecrest_R_first24h_after_mainshock.csv` | derived | 3,505 | events in the 24 h after the M7.1 shock, with km coordinates |
-| `ridgecrest_H_hand_trace_events.csv` | derived | 22 | small window for the DBSCAN hand trace |
+| `ridgecrest_H_hand_trace_events.csv` | derived | 19 | small window for the DBSCAN hand trace |
 | `ridgecrest_R_dbscan_three_eps_states.csv` | derived | 3,505 | DBSCAN labels for eps = 0.5, 1.0, 2.0 km |
 
 ---
