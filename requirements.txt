@@ -4,4 +4,4 @@ scipy==1.18.1
 scikit-learn==1.9.1
 matplotlib==3.11.2
 pyproj==3.8.0
-# plus jupyter (nbformat, ipykernel, nbconvert) to open/execute the notebook; Python 3.13
+# plus jupyter (nbformat, ipykernel, nbconvert) to open/execute the notebook; Python 3.12 (3.12.5 used for the shipped run)
