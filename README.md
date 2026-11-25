@@ -76,7 +76,6 @@ Advanced_Clustering_Notebook_Package/
 ├── Advanced_Clustering_Worked_Examples.ipynb   <- the code explained below
 ├── requirements.txt                            <- pinned package versions
 ├── data/                                       <- original datasets + derived CSVs  (see data/README.md)
-├── datasets/                                   <- raw downloads under their original names
 ├── figs/                                       <- figures produced by the notebook
 ├── results/results.json                        <- every number used in the lecture slides
 ├── docs/images/                                <- dataset overview figures
